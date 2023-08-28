@@ -2,22 +2,24 @@
 // © adobrusky
 
 //@version=5
-indicator("Buy/Sell Volume Bars", format=format.volume, precision=0)
+indicator("Buy/Sell Volume Bars", format=format.volume)
 
 // User inputs
-showMetricBehind = input.bool(false, "Show Volume Metric as Bars Behind")
+showMetric = input.bool(true, "Show Volume Metric")
+metricDisplay = input.string("Line", title = "Volume Metric Display", options = ['Line', 'Bars'])
 volumeMetric = input.string("SMA", title = "Volume Metric", options = ['SMA', 'Median'])
+volumeMedianSessionData = input.string("Regular", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
 volumeSMALength = input.int(50, minval=10, maxval=500,title="Volume SMA Length")
-volumeMedianLength = input.int(50, minval=10, maxval=500, title="Volume Median Length (Only Regular Session Data)")
-bullColor = input(color.rgb(8, 153, 129, 30), title="Buy Volume Color")
-bearColor = input(color.rgb(242, 54, 69, 30), title="Sell Volume Color")
-metricColor = input(color.rgb(57, 57, 57, 37), title="Volume Metric Bars Color")
+volumeMedianLength = input.int(50, minval=10, maxval=500, title="Volume Median Length")
+bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
+bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
+metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
 averageLineColor = input(color.rgb(243, 152, 15), title="Volume Metric Line Color")
 
 // Volume calculations
 var buyVolume = 0.0
 var sellVolume = 0.0
-buyVolume := high == low ? 0 : volume *  (close-low)  / (high-low)
+buyVolume := high == low ? 0 : volume *  (close - low)  / (high - low)
 usingSMA = volumeMetric == "SMA"
 volumeSMA = usingSMA ? ta.sma(volume, volumeSMALength) : 0
 
@@ -28,10 +30,11 @@ get_median(length) =>
         array.set(volumes, i, volume[i])
     array.median(volumes)
 
-var regularSessionTicker = ticker.new(syminfo.prefix, syminfo.tickerid, session.regular)
-medianVolume = usingSMA ? 0 : request.security(regularSessionTicker, timeframe.period, get_median(volumeMedianLength))
+var regularSessionTicker = ticker.new(syminfo.prefix, syminfo.tickerid, volumeMedianSessionData == "Regular" ? session.regular : session.extended)
+medianVolume = showMetric ? usingSMA ? 0 : request.security(regularSessionTicker, timeframe.period, get_median(volumeMedianLength)) : 0
+usingLine = metricDisplay == "Line"
 
-plot(showMetricBehind ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_columns, color=metricColor, title="Volume Metric")
+plot(showMetric and not usingLine ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
 plot(volume, style=plot.style_columns, color=bearColor, title="Sell Volume")
 plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
-plot(not showMetricBehind ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_line, color=averageLineColor, title="Volume Metric")
+plot(showMetric and usingLine ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
