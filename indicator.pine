@@ -10,7 +10,7 @@ metricDisplay = input.string("Line", title = "Volume Metric Display", options = 
 volumeMetric = input.string("SMA", title = "Volume Metric", options = ['SMA', 'Median'])
 volumeSMALength = input.int(50, minval=10, maxval=500,title="Volume SMA Length")
 volumeMedianLength = input.int(50, minval=10, maxval=500, title="Volume Median Length")
-volumeMedianSessionData = input.string("Regular", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
+volumeMedianSessionData = input.string("Extended", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
 bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
 metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
