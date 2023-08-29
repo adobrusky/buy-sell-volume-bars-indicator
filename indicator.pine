@@ -21,18 +21,31 @@ var buyVolume = 0.0
 var sellVolume = 0.0
 buyVolume := high == low ? 0 : volume *  (close - low)  / (high - low)
 usingSMA = volumeMetric == "SMA"
+usingLine = metricDisplay == "Line"
 volumeSMA = usingSMA ? ta.sma(volume, volumeSMALength) : 0
 
 // Volume median calculation
-get_median(length) =>
-    float[] volumes = array.new_float(length)
-    for i = 0 to length - 1
-        array.set(volumes, i, volume[i])
-    array.median(volumes)
+medianVolume = 0.0
+if showMetric and not usingSMA
+    var float[] regularMarketVolume = array.new_float(volumeMedianLength)
+    var float[] extendedMarketVolume = array.new_float(volumeMedianLength)
 
-var regularSessionTicker = ticker.new(syminfo.prefix, syminfo.tickerid, volumeMedianSessionData == "Regular" ? session.regular : session.extended)
-medianVolume = showMetric ? usingSMA ? 0 : request.security(regularSessionTicker, timeframe.period, get_median(volumeMedianLength)) : 0
-usingLine = metricDisplay == "Line"
+    if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket)
+        if extendedMarketVolume.size() == volumeMedianLength
+            extendedMarketVolume.shift()
+        array.push(extendedMarketVolume, volume)
+    else if session.ismarket
+        if regularMarketVolume.size() == volumeMedianLength
+            regularMarketVolume.shift()
+        array.push(regularMarketVolume, volume)
+
+    if volumeMedianSessionData == "Regular"
+        medianVolume := array.median(regularMarketVolume)
+    else if volumeMedianSessionData == "Extended"
+        if session.ismarket
+            medianVolume := array.median(regularMarketVolume)
+        else
+            medianVolume := array.median(extendedMarketVolume)
 
 plot(showMetric and not usingLine ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
 plot(volume, style=plot.style_columns, color=bearColor, title="Sell Volume")
