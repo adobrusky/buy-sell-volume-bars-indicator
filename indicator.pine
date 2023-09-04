@@ -11,6 +11,7 @@ volumeMetric = input.string("SMA", title = "Volume Metric", options = ['SMA', 'M
 volumeSMALength = input.int(50, minval=10, maxval=500,title="Volume SMA Length")
 volumeMedianLength = input.int(50, minval=10, maxval=500, title="Volume Median Length")
 volumeMedianSessionData = input.string("Extended", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
+showRegularMedian = input.timeframe("30", title = "Only Show Regular Session Data Volume Median Higher Than Timeframe")
 futuresRegularSession = input("0830-1500", title = "Futures Regular Session")
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
 bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
@@ -18,9 +19,8 @@ metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
 averageLineColor = input(color.rgb(243, 152, 15), title="Volume Metric Line Color")
 
 // Volume calculations
-var buyVolume = 0.0
-var sellVolume = 0.0
-buyVolume := high == low ? 0 : volume *  (close - low)  / (high - low)
+buyVolume = high == low ? 0 : volume *  (close - low)  / (high - low)
+sellVolume = 0.0
 usingSMA = volumeMetric == "SMA"
 usingLine = metricDisplay == "Line"
 volumeSMA = usingSMA ? ta.sma(volume, volumeSMALength) : 0
@@ -33,7 +33,8 @@ if showMetric and not usingSMA
 
     var bool isFuture = str.endswith(syminfo.ticker, "!") and syminfo.type == "futures"
     bool isFutureRegularSession = not na(time(timeframe.period, futuresRegularSession))
-    if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket or (isFuture and not isFutureRegularSession))
+    var bool useRegular = (timeframe.in_seconds(showRegularMedian) / 60) >= (timeframe.in_seconds() / 60)
+    if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket or (isFuture and not isFutureRegularSession)) and useRegular
         if extendedMarketVolume.size() == volumeMedianLength
             extendedMarketVolume.shift()
         array.push(extendedMarketVolume, volume)
@@ -45,7 +46,7 @@ if showMetric and not usingSMA
     if volumeMedianSessionData == "Regular"
         medianVolume := array.median(regularMarketVolume)
     else if volumeMedianSessionData == "Extended"
-        if (session.ismarket and not isFuture) or (isFuture and isFutureRegularSession)
+        if (session.ismarket and not isFuture) or (isFuture and isFutureRegularSession) or not useRegular
             medianVolume := array.median(regularMarketVolume)
         else
             medianVolume := array.median(extendedMarketVolume)
