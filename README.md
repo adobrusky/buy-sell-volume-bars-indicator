@@ -1,6 +1,6 @@
-# Buy/Sell Volume Bars
+# Buy/Sell Volume By Time Bars
 
-This Pine Script indicator is designed to enhance your TradingView chart analysis by displaying buy and sell volume bars by time. It features two customizable metrics to gauge a baseline volume. The indicator offers a simple moving average as well as a median. The median is calculated by taking the median of the last "volumic metric length" bars from the same session (regular session, extended session). The median during the regular market session will only be calculated using regular market session data and vice versa for extended hours. This method of calculation provides a more accurate baseline volume than the simple moving average.
+This Pine Script indicator is designed to enhance your TradingView chart analysis by displaying buy and sell volume by time bars. It features two customizable metrics to gauge a baseline volume. The indicator offers a simple moving average as well as a median. The median is calculated by taking the median of the last "volumic metric length" bars from the same session (regular session, extended session). The median during the regular market session will only be calculated using regular market session data and vice versa for extended hours. This method of calculation provides a more accurate baseline volume than the simple moving average.
 
 ## Features
 
@@ -21,6 +21,6 @@ This Pine Script indicator is designed to enhance your TradingView chart analysi
 3. Click on the "Pine Script" tab, paste the code into the editor, and save the script.
 4. Apply the indicator to your chart by selecting it from the list of available indicators.
 5. Configure the indicator's settings according to your preferences.
-6. The chart will now show the cumulative volume profile as well as the buy/sell pressure. Below is an example of the volume profile on the SPY daily chart.
+6. The chart will now show the buy/sell volume by time bars at the bottom. Below is an example of the indicator on the SPY 5m chart.
 
 ![Example Buy/Sell Volume Bars on SPY 5m chart](https://i.imgur.com/vKdKWDJ.png)
