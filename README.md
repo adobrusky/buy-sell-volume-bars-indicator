@@ -21,6 +21,6 @@ This Pine Script indicator is designed to enhance your TradingView chart analysi
 3. Click on the "Pine Script" tab, paste the code into the editor, and save the script.
 4. Apply the indicator to your chart by selecting it from the list of available indicators.
 5. Configure the indicator's settings according to your preferences.
-6. The chart will now show the buy/sell volume by time bars at the bottom. Below is an example of the indicator on the SPY 5m chart.
+6. The chart will now show the buy/sell volume by time bars at the bottom. Below is an example of the indicator with the median metric on the SPY 5m chart. As you can see, the extended session's volume median value is significantly less than the regular session's.
 
 ![Example Buy/Sell Volume Bars on SPY 5m chart](https://i.imgur.com/vKdKWDJ.png)
