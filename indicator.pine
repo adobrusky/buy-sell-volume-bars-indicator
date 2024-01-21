@@ -7,7 +7,7 @@ indicator("Buy/Sell Volume Bars", format=format.volume)
 // User inputs
 showMetric = input.bool(true, "Show Volume Metric")
 metricDisplay = input.string("Line", title = "Volume Metric Display", options = ['Line', 'Bars'])
-volumeMetric = input.string("SMA", title = "Volume Metric", options = ['SMA', 'Median'])
+volumeMetric = input.string("Median", title = "Volume Metric", options = ['SMA', 'Median'])
 volumeMetricLength = input.int(50, minval=10, maxval=500,title="Volume Metric Length")
 volumeMedianSessionData = input.string("Extended", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
 showRegularMedian = input.timeframe("30", title = "Only Show Regular Session Volume Median Higher Than Timeframe")
@@ -37,7 +37,7 @@ if showMetric and not usingSMA
         if extendedMarketVolume.size() == volumeMetricLength
             extendedMarketVolume.shift()
         array.push(extendedMarketVolume, volume)
-    else if (session.ismarket and not isFuture) or (isFuture and isFutureRegularSession)
+    else if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdaily))
         if regularMarketVolume.size() == volumeMetricLength
             regularMarketVolume.shift()
         array.push(regularMarketVolume, volume)
