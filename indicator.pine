@@ -19,38 +19,42 @@ averageLineColor = input(color.rgb(243, 152, 15), title="Volume Metric Line Colo
 
 // Volume calculations
 buyVolume = high == low ? 0 : volume *  (close - low)  / (high - low)
-sellVolume = 0.0
+sellVolume = volume
 usingSMA = volumeMetric == "SMA"
 usingLine = metricDisplay == "Line"
 volumeSMA = usingSMA ? ta.sma(volume, volumeMetricLength) : 0
-
-// Volume median calculation
 medianVolume = 0.0
-if showMetric and not usingSMA
-    var float[] regularMarketVolume = array.new_float(volumeMetricLength)
-    var float[] extendedMarketVolume = array.new_float(volumeMetricLength)
+if not na(volume)
+    // Volume median calculation
+    if showMetric and not usingSMA
+        var float[] regularMarketVolume = array.new_float(volumeMetricLength)
+        var float[] extendedMarketVolume = array.new_float(volumeMetricLength)
 
-    var bool isFuture = str.endswith(syminfo.ticker, "!") and syminfo.type == "futures"
-    bool isFutureRegularSession = not na(time(timeframe.period, futuresRegularSession))
-    var bool useRegular = (timeframe.in_seconds(showRegularMedian) / 60) >= (timeframe.in_seconds() / 60)
-    if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket or (isFuture and not isFutureRegularSession)) and useRegular
-        if extendedMarketVolume.size() == volumeMetricLength
-            extendedMarketVolume.shift()
-        array.push(extendedMarketVolume, volume)
-    else if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdaily))
-        if regularMarketVolume.size() == volumeMetricLength
-            regularMarketVolume.shift()
-        array.push(regularMarketVolume, volume)
+        var bool isFuture = str.endswith(syminfo.ticker, "!") and syminfo.type == "futures"
+        bool isFutureRegularSession = not na(time(timeframe.period, futuresRegularSession))
+        var bool useRegular = (timeframe.in_seconds(showRegularMedian) / 60) >= (timeframe.in_seconds() / 60)
+        if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket or (isFuture and not isFutureRegularSession)) and useRegular
+            if extendedMarketVolume.size() == volumeMetricLength
+                extendedMarketVolume.shift()
+            array.push(extendedMarketVolume, volume)
+        else if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdaily))
+            if regularMarketVolume.size() == volumeMetricLength
+                regularMarketVolume.shift()
+            array.push(regularMarketVolume, volume)
 
-    if volumeMedianSessionData == "Regular"
-        medianVolume := array.median(regularMarketVolume)
-    else if volumeMedianSessionData == "Extended"
-        if (session.ismarket and not isFuture) or (isFuture and isFutureRegularSession) or not useRegular
+        if volumeMedianSessionData == "Regular"
             medianVolume := array.median(regularMarketVolume)
-        else
-            medianVolume := array.median(extendedMarketVolume)
+        else if volumeMedianSessionData == "Extended"
+            if (session.ismarket and not isFuture) or (isFuture and isFutureRegularSession) or not useRegular
+                medianVolume := array.median(regularMarketVolume)
+            else
+                medianVolume := array.median(extendedMarketVolume)
+else
+    buyVolume := na
+    sellVolume := na
+    showMetric := false
 
 plot(showMetric and not usingLine ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
-plot(volume, style=plot.style_columns, color=bearColor, title="Sell Volume")
+plot(sellVolume, style=plot.style_columns, color=bearColor, title="Sell Volume")
 plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
 plot(showMetric and usingLine ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
