@@ -26,6 +26,7 @@ usingSMA = volumeMetric == "SMA"
 usingLine = metricDisplay == "Line"
 volumeSMA = usingSMA ? ta.sma(volume, volumeMetricLength) : 0
 medianVolume = 0.0
+
 if not na(volume)
     // Volume median calculation
     if showMetric and not usingSMA
