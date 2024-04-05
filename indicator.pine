@@ -1,5 +1,4 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © adobrusky
 
 //@version=5
 indicator("Buy/Sell Volume Bars", format=format.volume)
@@ -12,10 +11,12 @@ volumeMetricLength = input.int(50, minval=10, maxval=500,title="Volume Metric Le
 volumeMedianSessionData = input.string("Extended", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
 showRegularMedian = input.timeframe("30", title = "Only Show Regular Session Volume Median Higher Than Timeframe")
 futuresRegularSession = input("0830-1500:23456", title = "Futures Regular Session")
+highVolumeThreshold = input(2.0, title="High Volume Threshold")
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
 bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
 metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
 averageLineColor = input(color.rgb(243, 152, 15), title="Volume Metric Line Color")
+highVolumeColor = input(color.white, title="High Volume Color")
 
 // Volume calculations
 gapUp = close[1] < low ? low - close[1] : 0
@@ -57,7 +58,19 @@ else
     sellVolume := na
     showMetric := false
 
-plot(showMetric and not usingLine ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
+// Calculate the volume metric based on user selection
+volumeMetricValue = usingSMA ? volumeSMA : medianVolume
+
+// Plot volume metric
+plot(showMetric and not usingLine ? volumeMetricValue : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
+
+// Plot buy and sell volumes
 plot(sellVolume, style=plot.style_columns, color=bearColor, title="Sell Volume")
 plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
-plot(showMetric and usingLine ? usingSMA ? volumeSMA : medianVolume : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
+
+// Plot volume metric line
+plot(showMetric and usingLine ? volumeMetricValue : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
+
+// Check for extreme volume and plot exclamation mark
+highVolumeCondition = session.ismarket ? volume > volumeMetricValue * highVolumeThreshold : na
+plotchar(highVolumeCondition, title="High Volume Indicator", char='!', location=location.abovebar, color=highVolumeColor, size=size.tiny)
