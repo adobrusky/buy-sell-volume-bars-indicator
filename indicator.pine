@@ -5,6 +5,7 @@ indicator("Buy/Sell Volume Bars", format=format.volume)
 
 // User inputs
 showMetric = input.bool(true, "Show Volume Metric")
+showHighVolume = input.bool(true, "Show High Volume")
 metricDisplay = input.string("Line", title = "Volume Metric Display", options = ['Line', 'Bars'])
 volumeMetric = input.string("Median", title = "Volume Metric", options = ['SMA', 'Median'])
 volumeMetricLength = input.int(50, minval=10, maxval=500,title="Volume Metric Length")
@@ -72,5 +73,5 @@ plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
 plot(showMetric and usingLine ? volumeMetricValue : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
 
 // Check for extreme volume and plot exclamation mark
-highVolumeCondition = session.ismarket ? volume > volumeMetricValue * highVolumeThreshold : na
-plotchar(highVolumeCondition, title="High Volume Indicator", char='!', location=location.abovebar, color=highVolumeColor, size=size.tiny)
+highVolumeCondition = session.ismarket and showHighVolume ? volume > volumeMetricValue * highVolumeThreshold : na
+plotchar(highVolumeCondition, title="High Volume Indicator", char='!', location=location.top, color=highVolumeColor, size=size.tiny)
