@@ -74,4 +74,4 @@ plot(showMetric and usingLine ? volumeMetricValue : na, style=plot.style_line, c
 
 // Check for extreme volume and plot exclamation mark
 highVolumeCondition = session.ismarket and showHighVolume ? volume > volumeMetricValue * highVolumeThreshold : na
-plotchar(highVolumeCondition, title="High Volume Indicator", char='!', location=location.top, color=highVolumeColor, size=size.tiny)
+plotchar(showMetric and highVolumeCondition, title="High Volume Indicator", char='!', location=location.top, color=highVolumeColor, size=size.tiny)
