@@ -6,13 +6,15 @@ indicator("Buy/Sell Volume Bars", format=format.volume)
 // User inputs
 showMetric = input.bool(true, "Show Volume Metric")
 showHighVolume = input.bool(true, "Show High Volume")
+showExtremeVolume = input.bool(true, "Show Extreme Volume")
 metricDisplay = input.string("Line", title = "Volume Metric Display", options = ['Line', 'Bars'])
 volumeMetric = input.string("Median", title = "Volume Metric", options = ['SMA', 'Median'])
-volumeMetricLength = input.int(50, minval=10, maxval=500,title="Volume Metric Length")
+volumeMetricLength = input.int(50, minval=10, maxval=500, title="Volume Metric Length")
 volumeMedianSessionData = input.string("Extended", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
 showRegularMedian = input.timeframe("30", title = "Only Show Regular Session Volume Median Higher Than Timeframe")
 futuresRegularSession = input("0830-1500:23456", title = "Futures Regular Session")
-highVolumeThreshold = input(2.0, title="High Volume Threshold")
+stdDevHVMultiplier = input(2.0, title="High Volume Multiplier")
+stdDevEVMultiplier = input(3.0, title="Extreme Volume Multiplier")
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
 bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
 metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
@@ -62,6 +64,13 @@ else
 // Calculate the volume metric based on user selection
 volumeMetricValue = usingSMA ? volumeSMA : medianVolume
 
+// Calculate standard deviation
+float stddev = ta.stdev(volume, volumeMetricLength)
+
+// Calculate the threshold for high volume based on standard deviation
+float highVolumeThreshold = volumeMetricValue + (stdDevHVMultiplier * stddev)
+float extremeVolumeThreshold = volumeMetricValue + (stdDevEVMultiplier * stddev)
+
 // Plot volume metric
 plot(showMetric and not usingLine ? volumeMetricValue : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
 
@@ -73,5 +82,7 @@ plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
 plot(showMetric and usingLine ? volumeMetricValue : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
 
 // Check for extreme volume and plot exclamation mark
-highVolumeCondition = session.ismarket and showHighVolume ? volume > volumeMetricValue * highVolumeThreshold : na
-plotchar(showMetric and highVolumeCondition, title="High Volume Indicator", char='!', location=location.top, color=highVolumeColor, size=size.tiny)
+highVolumeCondition = session.ismarket and showHighVolume ? volume > highVolumeThreshold : na
+extremeVolumeCondition = session.ismarket and showExtremeVolume ? volume > extremeVolumeThreshold : na
+plotchar(showMetric and highVolumeCondition and not extremeVolumeCondition, title="High Volume Indicator", char='+', location=location.top, color=highVolumeColor, size=size.tiny)
+plotchar(showMetric and extremeVolumeCondition, title="Extreme Volume Indicator", char='!', location=location.top, color=highVolumeColor, size=size.tiny)
