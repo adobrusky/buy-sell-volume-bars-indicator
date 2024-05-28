@@ -13,8 +13,8 @@ volumeMetricLength = input.int(50, minval=10, maxval=500, title="Volume Metric L
 volumeMedianSessionData = input.string("Extended", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
 showRegularMedian = input.timeframe("30", title = "Only Show Regular Session Volume Median Higher Than Timeframe")
 futuresRegularSession = input("0830-1500:23456", title = "Futures Regular Session")
-stdDevHVMultiplier = input(2.0, title="High Volume Multiplier")
-stdDevEVMultiplier = input(3.0, title="Extreme Volume Multiplier")
+HVMultiplier = input(2.0, title="High Volume Multiplier")
+EVMultiplier = input(3.0, title="Extreme Volume Multiplier")
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
 bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
 metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
@@ -40,11 +40,12 @@ if not na(volume)
         var bool isFuture = str.endswith(syminfo.ticker, "!") and syminfo.type == "futures"
         bool isFutureRegularSession = not na(time(timeframe.period, futuresRegularSession))
         var bool useRegular = (timeframe.in_seconds(showRegularMedian) / 60) >= (timeframe.in_seconds() / 60)
-        if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket or (isFuture and not isFutureRegularSession)) and useRegular
+        
+        if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket or (isFuture and (isFutureRegularSession or timeframe.isdwm))) and useRegular
             if extendedMarketVolume.size() == volumeMetricLength
                 extendedMarketVolume.shift()
             array.push(extendedMarketVolume, volume)
-        else if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdaily))
+        else if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdwm))
             if regularMarketVolume.size() == volumeMetricLength
                 regularMarketVolume.shift()
             array.push(regularMarketVolume, volume)
@@ -52,7 +53,7 @@ if not na(volume)
         if volumeMedianSessionData == "Regular"
             medianVolume := array.median(regularMarketVolume)
         else if volumeMedianSessionData == "Extended"
-            if (session.ismarket and not isFuture) or (isFuture and isFutureRegularSession) or not useRegular
+            if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdwm)) or not useRegular
                 medianVolume := array.median(regularMarketVolume)
             else
                 medianVolume := array.median(extendedMarketVolume)
@@ -64,12 +65,9 @@ else
 // Calculate the volume metric based on user selection
 volumeMetricValue = usingSMA ? volumeSMA : medianVolume
 
-// Calculate standard deviation
-float stddev = ta.stdev(volume, volumeMetricLength)
-
 // Calculate the threshold for high volume based on standard deviation
-float highVolumeThreshold = volumeMetricValue + (stdDevHVMultiplier * stddev)
-float extremeVolumeThreshold = volumeMetricValue + (stdDevEVMultiplier * stddev)
+float highVolumeThreshold = HVMultiplier * volumeMetricValue
+float extremeVolumeThreshold = EVMultiplier * volumeMetricValue
 
 // Plot volume metric
 plot(showMetric and not usingLine ? volumeMetricValue : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
