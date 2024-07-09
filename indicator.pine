@@ -1,20 +1,20 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 
 //@version=5
-indicator("Buy/Sell Volume Bars", format=format.volume)
+indicator("Buy/Sell Pressure Volume Bars", format=format.volume)
 
 // User inputs
-showMetric = input.bool(true, "Show Volume Metric")
-showHighVolume = input.bool(true, "Show High Volume")
-showExtremeVolume = input.bool(true, "Show Extreme Volume")
-metricDisplay = input.string("Line", title = "Volume Metric Display", options = ['Line', 'Bars'])
-volumeMetric = input.string("Median", title = "Volume Metric", options = ['SMA', 'Median'])
-volumeMetricLength = input.int(50, minval=10, maxval=500, title="Volume Metric Length")
-volumeMedianSessionData = input.string("Extended", title = "Volume Median Session Data", options = ['Regular', 'Extended'])
-showRegularMedian = input.timeframe("30", title = "Only Show Regular Session Volume Median Higher Than Timeframe")
-futuresRegularSession = input("0830-1500:23456", title = "Futures Regular Session")
-HVMultiplier = input(2.0, title="High Volume Multiplier")
-EVMultiplier = input(3.0, title="Extreme Volume Multiplier")
+showMetric = input.bool(true, "Show Volume Metric", tooltip="Toggle to show or hide the volume metric.")
+showHighVolume = input.bool(true, "Show High Volume", tooltip="Toggle to highlight high volume bars (+).")
+showExtremeVolume = input.bool(true, "Show Extreme Volume", tooltip="Toggle to highlight extreme volume bars (!).")
+metricDisplay = input.string("Line", title="Volume Metric Display", options=['Line', 'Bars'], tooltip="Choose how the volume metric is displayed: as a line or as bars.")
+volumeMetric = input.string("Baseline", title="Volume Metric", options=['SMA', 'Baseline'], tooltip="Select the type of volume metric: Simple Moving Average (SMA) or the proprietary Baseline.")
+volumeMetricLength = input.int(50, minval=10, maxval=500, title="Volume Metric Length", tooltip="Set the length for the volume metric calculation.")
+volumeMedianSessionData = input.string("Extended", title="Volume Baseline Session Data", options=['Regular', 'Extended'], tooltip="Choose the session data type for calculating the volume baseline: Regular or Extended.")
+showRegularMedian = input.timeframe("30", title="Only Show Regular Session Data Above", tooltip="The timeframe above which only regular session data is displayed in the Baseline, even if extended session data is selected.")
+futuresRegularSession = input("0830-1500:23456", title="Futures Regular Session", tooltip="Define the regular trading session hours for futures.")
+HVMultiplier = input(2.0, title="High Volume Multiplier", tooltip="Multiplier for high volume (volume > 2x metric).")
+EVMultiplier = input(3.0, title="Extreme Volume Multiplier", tooltip="Multiplier for extreme volume (volume > 3x metric).")
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
 bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
 metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
