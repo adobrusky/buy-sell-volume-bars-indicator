@@ -1,6 +1,6 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 
-//@version=5
+//@version=6
 indicator("Buy/Sell Pressure Volume Bars", format=format.volume)
 
 // User inputs
@@ -12,7 +12,6 @@ volumeMetric = input.string("Baseline", title="Volume Metric", options=['SMA', '
 volumeMetricLength = input.int(50, minval=10, maxval=500, title="Volume Metric Length", tooltip="Set the length for the volume metric calculation.")
 volumeMedianSessionData = input.string("Extended", title="Volume Baseline Session Data", options=['Regular', 'Extended'], tooltip="Choose the session data type for calculating the volume baseline: Regular or Extended.")
 showRegularMedian = input.timeframe("30", title="Only Show Regular Session Data Above", tooltip="The timeframe above which only regular session data is displayed in the Baseline, even if extended session data is selected.")
-futuresRegularSession = input("0830-1500:23456", title="Futures Regular Session", tooltip="Define the regular trading session hours for futures.")
 HVMultiplier = input(2.0, title="High Volume Multiplier", tooltip="Multiplier for high volume (volume > 2x metric).")
 EVMultiplier = input(3.0, title="Extreme Volume Multiplier", tooltip="Multiplier for extreme volume (volume > 3x metric).")
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
@@ -20,6 +19,20 @@ bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
 metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
 averageLineColor = input(color.rgb(243, 152, 15), title="Volume Metric Line Color")
 highVolumeColor = input(color.white, title="High Volume Color")
+
+// // Function to calculate mean from an array
+// f_mean(arr) =>
+//     sum = 0.0
+//     for i = 0 to array.size(arr) - 1
+//         sum := sum + array.get(arr, i)
+//     sum / array.size(arr)
+
+// // Function to calculate standard deviation from an array
+// f_stdev(arr, mean) =>
+//     variance = 0.0
+//     for i = 0 to array.size(arr) - 1
+//         variance := variance + math.pow(array.get(arr, i) - mean, 2)
+//     math.sqrt(variance / array.size(arr))
 
 // Volume calculations
 gapUp = close[1] < low ? low - close[1] : 0
@@ -30,6 +43,7 @@ usingSMA = volumeMetric == "SMA"
 usingLine = metricDisplay == "Line"
 volumeSMA = usingSMA ? ta.sma(volume, volumeMetricLength) : 0
 medianVolume = 0.0
+// volumeStandardDeviation = 0.0
 
 if not na(volume)
     // Volume median calculation
@@ -37,26 +51,28 @@ if not na(volume)
         var float[] regularMarketVolume = array.new_float(volumeMetricLength)
         var float[] extendedMarketVolume = array.new_float(volumeMetricLength)
 
-        var bool isFuture = str.endswith(syminfo.ticker, "!") and syminfo.type == "futures"
-        bool isFutureRegularSession = not na(time(timeframe.period, futuresRegularSession))
+        isRTH = time(timeframe.period, "0930-1600", "America/New_York") != 0 or timeframe.isdwm
         var bool useRegular = (timeframe.in_seconds(showRegularMedian) / 60) >= (timeframe.in_seconds() / 60)
         
-        if volumeMedianSessionData == "Extended" and (session.ispremarket or session.ispostmarket or (isFuture and (isFutureRegularSession or timeframe.isdwm))) and useRegular
+        if volumeMedianSessionData == "Extended" and not isRTH and useRegular
             if extendedMarketVolume.size() == volumeMetricLength
                 extendedMarketVolume.shift()
             array.push(extendedMarketVolume, volume)
-        else if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdwm))
+        else if isRTH
             if regularMarketVolume.size() == volumeMetricLength
                 regularMarketVolume.shift()
             array.push(regularMarketVolume, volume)
 
         if volumeMedianSessionData == "Regular"
             medianVolume := array.median(regularMarketVolume)
+            // volumeStandardDeviation := f_stdev(regularMarketVolume, volumeMetricLength)
         else if volumeMedianSessionData == "Extended"
-            if (session.ismarket and not isFuture) or (isFuture and (isFutureRegularSession or timeframe.isdwm)) or not useRegular
+            if isRTH or not useRegular
                 medianVolume := array.median(regularMarketVolume)
+                // volumeStandardDeviation := f_stdev(regularMarketVolume, volumeMetricLength)
             else
                 medianVolume := array.median(extendedMarketVolume)
+                // volumeStandardDeviation := f_stdev(extendedMarketVolume, volumeMetricLength)
 else
     buyVolume := na
     sellVolume := na
@@ -64,10 +80,14 @@ else
 
 // Calculate the volume metric based on user selection
 volumeMetricValue = usingSMA ? volumeSMA : medianVolume
+// volumeStandardDeviation := ta.stdev(volume, volumeMetricLength)
 
 // Calculate the threshold for high volume based on standard deviation
 float highVolumeThreshold = HVMultiplier * volumeMetricValue
 float extremeVolumeThreshold = EVMultiplier * volumeMetricValue
+
+// float highVolumeThreshold = (HVMultiplier * volumeStandardDeviation) + volumeMetricValue
+// float extremeVolumeThreshold = (EVMultiplier * volumeStandardDeviation) + volumeMetricValue
 
 // Plot volume metric
 plot(showMetric and not usingLine ? volumeMetricValue : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
@@ -80,7 +100,7 @@ plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
 plot(showMetric and usingLine ? volumeMetricValue : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
 
 // Check for extreme volume and plot exclamation mark
-highVolumeCondition = session.ismarket and showHighVolume ? volume > highVolumeThreshold : na
-extremeVolumeCondition = session.ismarket and showExtremeVolume ? volume > extremeVolumeThreshold : na
+highVolumeCondition = session.ismarket and showHighVolume ? volume > highVolumeThreshold : false
+extremeVolumeCondition = session.ismarket and showExtremeVolume ? volume > extremeVolumeThreshold : false
 plotchar(showMetric and highVolumeCondition and not extremeVolumeCondition, title="High Volume Indicator", char='+', location=location.top, color=highVolumeColor, size=size.tiny)
 plotchar(showMetric and extremeVolumeCondition, title="Extreme Volume Indicator", char='!', location=location.top, color=highVolumeColor, size=size.tiny)
