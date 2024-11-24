@@ -51,7 +51,7 @@ if not na(volume)
         var float[] regularMarketVolume = array.new_float(volumeMetricLength)
         var float[] extendedMarketVolume = array.new_float(volumeMetricLength)
 
-        isRTH = time(timeframe.period, "0930-1600", "America/New_York") != 0 or timeframe.isdwm
+        isRTH = time(timeframe.period, "0930-1600:23456", "America/New_York") != 0 or timeframe.isdwm
         var bool useRegular = (timeframe.in_seconds(showRegularMedian) / 60) >= (timeframe.in_seconds() / 60)
         
         if volumeMedianSessionData == "Extended" and not isRTH and useRegular
