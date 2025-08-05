@@ -1,7 +1,7 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 
 //@version=6
-indicator("Buy/Sell Pressure Volume Bars", format=format.volume)
+indicator("Dobrusky Volume Core", shorttitle = "Vol Core", format=format.volume)
 
 // User inputs
 showMetric = input.bool(true, "Show Volume Metric", tooltip="Toggle to show or hide the volume metric.")
