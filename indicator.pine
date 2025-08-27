@@ -10,10 +10,16 @@ volumeMetric = input.string("Baseline", title="Volume Metric", options=['SMA', '
 volumeMetricLength = input.int(50, minval=10, maxval=500, title="Volume Metric Length", tooltip="Set the length for the volume metric calculation.")
 volumeMedianSessionData = input.string("Extended", title="Volume Baseline Session Data", options=['Regular', 'Extended'], tooltip="Choose the session data type for calculating the volume baseline: Regular or Extended.")
 showRegularMedian = input.timeframe("30", title="Only Show Regular Session Data Above", tooltip="The timeframe above which only regular session data is displayed in the Baseline, even if extended session data is selected.")
+volumeMetricMultiplier = input.float(1.5, minval=0, maxval=10, title="Volume Metric Multiplier", tooltip="Set the multiplier for the volume metric (0 if you want hidden).")
+volumeMetricMultiplier2 = input.float(2, minval=0, maxval=10, title="2nd Volume Metric Multiplier", tooltip="Set the 2nd multiplier for the volume metric (0 if you want hidden).")
 bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
 bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
-metricColor = input(color.rgb(83, 83, 83, 30), title="Volume Metric Bars Color")
-averageLineColor = input(color.rgb(243, 152, 15), title="Volume Metric Line Color")
+metricColor = input(color.rgb(156, 156, 156, 30), title="1 Volume Metric Bars Color")
+metricColor2 = input(color.rgb(83, 83, 83, 30), title="2 Volume Metric Bars Color")
+metricColor3 = input(color.rgb(0, 0, 0, 30), title="3 Volume Metric Bars Color")
+averageLineColor = input(color.rgb(243, 152, 15), title="1 Volume Metric Line Color")
+averageLineColor2 = input(color.rgb(243, 110, 15), title="2 Volume Metric Line Color")
+averageLineColor3 = input(color.rgb(220, 11, 11), title="3 Volume Metric Line Color")
 
 // Volume calculations
 gapUp = close[1] < low ? low - close[1] : 0
@@ -59,6 +65,8 @@ else
 volumeMetricValue = usingSMA ? volumeSMA : medianVolume
 
 // Plot volume metric
+plot(showMetric and not usingLine and volumeMetricMultiplier2 > 0 ? volumeMetricValue * volumeMetricMultiplier2: na, style=plot.style_columns, color=metricColor3, title="Volume Metric as Bars")
+plot(showMetric and not usingLine and volumeMetricMultiplier > 0 ? volumeMetricValue * volumeMetricMultiplier: na, style=plot.style_columns, color=metricColor2, title="Volume Metric as Bars")
 plot(showMetric and not usingLine ? volumeMetricValue : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
 
 // Plot buy and sell volumes
@@ -67,3 +75,5 @@ plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
 
 // Plot volume metric line
 plot(showMetric and usingLine ? volumeMetricValue : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
+plot(showMetric and usingLine and volumeMetricMultiplier > 0 ? volumeMetricValue * volumeMetricMultiplier: na, style=plot.style_line, color=averageLineColor2, title="Volume Metric as Line")
+plot(showMetric and usingLine and volumeMetricMultiplier2 > 0 ? volumeMetricValue * volumeMetricMultiplier2: na, style=plot.style_line, color=averageLineColor3, title="Volume Metric as Line")
