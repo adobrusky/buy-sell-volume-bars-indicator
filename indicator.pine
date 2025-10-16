@@ -14,7 +14,7 @@ metricDisplay        = input.string("Line", "Baseline Display", options=['Line',
 groupBase = "Baseline Calculation"
 volumeMetric         = input.string("Baseline", "Baseline Type", options=['SMA','Baseline'], tooltip="SMA uses ta.sma(volume, Length). Baseline uses session-aware rolling median.", group=groupBase)
 volumeMetricLength   = input.int(50,    "Length", minval=10, maxval=1000, tooltip="Lookback length for SMA/Median.", group=groupBase)
-baselineSource       = input.string("Regular", "Baseline Session Data", options=['Regular','Extended'], tooltip="Which session data to use for the baseline.", group=groupBase)
+baselineSource       = input.string("Extended", "Baseline Session Data", options=['Regular','Extended'], tooltip="Which session data to use for the baseline.", group=groupBase)
 
 // — Session Controls —
 groupSess = "Session Controls"
