@@ -1,79 +1,147 @@
-// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-
 //@version=6
-indicator("Dobrusky Volume Core", shorttitle = "Vol Core", format=format.volume)
+indicator("Dobrusky Volume Core", shorttitle="Vol Core", format=format.volume, timeframe="", timeframe_gaps=true)
 
-// User inputs
-showMetric = input.bool(true, "Show Volume Metric", tooltip="Toggle to show or hide the volume metric.")
-metricDisplay = input.string("Line", title="Volume Metric Display", options=['Line', 'Bars'], tooltip="Choose how the volume metric is displayed: as a line or as bars.")
-volumeMetric = input.string("Baseline", title="Volume Metric", options=['SMA', 'Baseline'], tooltip="Select the type of volume metric: Simple Moving Average (SMA) or the proprietary Baseline.")
-volumeMetricLength = input.int(50, minval=10, maxval=500, title="Volume Metric Length", tooltip="Set the length for the volume metric calculation.")
-volumeMedianSessionData = input.string("Extended", title="Volume Baseline Session Data", options=['Regular', 'Extended'], tooltip="Choose the session data type for calculating the volume baseline: Regular or Extended.")
-showRegularMedian = input.timeframe("30", title="Only Show Regular Session Data Above", tooltip="The timeframe above which only regular session data is displayed in the Baseline, even if extended session data is selected.")
-volumeMetricMultiplier = input.float(1.5, minval=0, maxval=10, title="Volume Metric Multiplier", tooltip="Set the multiplier for the volume metric (0 if you want hidden).")
-volumeMetricMultiplier2 = input.float(2, minval=0, maxval=10, title="2nd Volume Metric Multiplier", tooltip="Set the 2nd multiplier for the volume metric (0 if you want hidden).")
-bullColor = input(color.rgb(8, 153, 129), title="Buy Volume Color")
-bearColor = input(color.rgb(242, 54, 69), title="Sell Volume Color")
-metricColor = input(color.rgb(156, 156, 156, 30), title="1 Volume Metric Bars Color")
-metricColor2 = input(color.rgb(83, 83, 83, 30), title="2 Volume Metric Bars Color")
-metricColor3 = input(color.rgb(0, 0, 0, 30), title="3 Volume Metric Bars Color")
-averageLineColor = input(color.rgb(243, 152, 15), title="1 Volume Metric Line Color")
-averageLineColor2 = input(color.rgb(243, 110, 15), title="2 Volume Metric Line Color")
-averageLineColor3 = input(color.rgb(220, 11, 11), title="3 Volume Metric Line Color")
+//=============================//
+//           INPUTS            //
+//=============================//
 
-// Volume calculations
-gapUp = close[1] < low ? low - close[1] : 0
-gapDown = close[1] > high ? close[1] - high : 0
-buyVolume = volume * (close - (low - gapUp)) / ((high + gapDown) - (low - gapUp))
-sellVolume = volume
-usingSMA = volumeMetric == "SMA"
-usingLine = metricDisplay == "Line"
-volumeSMA = usingSMA ? ta.sma(volume, volumeMetricLength) : 0
-medianVolume = 0.0
+// — Display —
+groupDisp = "Display"
+showMetric           = input.bool(true,  "Show Volume Baseline",           tooltip="Toggle to show/hide the baseline & its levels.", group=groupDisp)
+metricDisplay        = input.string("Line", "Baseline Display", options=['Line','Bars'], tooltip="Show the baseline as a line or as bars.", group=groupDisp)
 
+// — Baseline Source / Calc —
+groupBase = "Baseline Calculation"
+volumeMetric         = input.string("Baseline", "Baseline Type", options=['SMA','Baseline'], tooltip="SMA uses ta.sma(volume, Length). Baseline uses session-aware rolling median.", group=groupBase)
+volumeMetricLength   = input.int(50,    "Length", minval=10, maxval=1000, tooltip="Lookback length for SMA/Median.", group=groupBase)
+baselineSource       = input.string("Regular", "Baseline Session Data", options=['Regular','Extended'], tooltip="Which session data to use for the baseline.", group=groupBase)
+
+// — Session Controls —
+groupSess = "Session Controls"
+rthTimeStr           = input.session("0930-1600", "Regular Session (Local to TZ below)", group=groupSess, tooltip="Trading-day RTH window, e.g., 0930-1600.")
+tzStr                = input.string("America/New_York", "Session Timezone", group=groupSess, tooltip="IANA timezone for the RTH window.")
+forceRegularAboveTf  = input.timeframe("30", "Force Regular Above Timeframe", group=groupSess, tooltip="On timeframes equal to or above this, use Regular session even if Extended is selected.")
+
+// — Baseline Levels —
+groupLvl = "Baseline Levels"
+showLevel1           = input.bool(true,  "Show Level × Multiplier 1", group=groupLvl)
+showLevel2           = input.bool(true,  "Show Level × Multiplier 2", group=groupLvl)
+showLevel3           = input.bool(true,  "Show Level × Multiplier 3", group=groupLvl)
+mult1                = input.float(1.0,  "Multiplier 1", minval=0, step=0.1, group=groupLvl)
+mult2                = input.float(1.5,  "Multiplier 2", minval=0, step=0.1, group=groupLvl)
+mult3                = input.float(2.0,  "Multiplier 3", minval=0, step=0.1, group=groupLvl)
+
+// — Colors —
+groupCol = "Colors"
+bullColor            = input.color(color.rgb(8,153,129),      "Buy Volume", group=groupCol)
+bearColor            = input.color(color.rgb(242,54,69),      "Sell Volume", group=groupCol)
+barBaseColor         = input.color(color.yellow,              "Baseline Bars (Base)", group=groupCol)
+barLvl2Color         = input.color(color.orange,              "Baseline Bars (×2)", group=groupCol)
+barLvl3Color         = input.color(color.red,                 "Baseline Bars (×3)", group=groupCol)
+lineBaseColor        = input.color(color.yellow,     "Baseline Line (Base)", group=groupCol)
+lineLvl2Color        = input.color(color.orange,     "Baseline Line (×2)", group=groupCol)
+lineLvl3Color        = input.color(color.red,      "Baseline Line (×3)", group=groupCol)
+
+//=============================//
+//         UTILITIES           //
+//=============================//
+
+// True if current bar time intersects provided session window in tz.
+inSession(sessStr, tz) =>
+    // time() returns bar time (Unix ms) for bars that intersect session, else 0
+    time(timeframe.period, sessStr, tz) != 0 or timeframe.isdwm
+
+// Push with cap (queue behavior).
+pushWithCap(arr, float v, int cap) =>
+    if array.size(arr) >= cap
+        array.shift(arr)
+    array.push(arr, v)
+
+// Return timeframe seconds from a string (safe).
+tfSeconds(tf) =>
+    // timeframe.in_seconds() expects a string timeframe like "5", "60", "D"
+    sec = timeframe.in_seconds(tf)
+    na(sec) ? 0 : sec
+
+// Current TF seconds
+curTfSec = tfSeconds(timeframe.period)
+forceReg = curTfSec >= tfSeconds(forceRegularAboveTf)
+
+//=============================//
+//     BUY/SELL SPLIT VOL      //
+//=============================//
+
+gapUp   = close[1] < low  ? (low  - close[1]) : 0.0
+gapDown = close[1] > high ? (close[1] - high) : 0.0
+
+adjLow  = low  - gapUp
+adjHigh = high + gapDown
+rng   = adjHigh - adjLow
+
+// Match original behavior: buyVolume scaled by adjusted range, sellVolume = total volume.
+// (Range==0 guard avoids divide-by-zero; returns na just like Pine would if division blew up.)
+buyVolume  = na(volume) ? na : (rng != 0 ? volume * (close - adjLow) / rng : na)
+sellVolume = volume - buyVolume
+buyDominant = buyVolume >= sellVolume
+
+//=============================//
+//       BASELINE SERIES       //
+//=============================//
+
+usingSMA  = (volumeMetric == "SMA")
+usingLine = (metricDisplay == "Line")
+
+// Rolling arrays for Regular vs Extended
+var float[] regVol = array.new_float()
+var float[] extVol = array.new_float()
+
+isRTH = inSession(rthTimeStr + ":23456", tzStr)  // include Mon–Fri
 if not na(volume)
-    // Volume median calculation
-    if showMetric and not usingSMA
-        var float[] regularMarketVolume = array.new_float(volumeMetricLength)
-        var float[] extendedMarketVolume = array.new_float(volumeMetricLength)
+    // Decide which bucket gets this bar's volume
+    if isRTH
+        pushWithCap(regVol, volume, volumeMetricLength)
+    else
+        pushWithCap(extVol, volume, volumeMetricLength)
 
-        isRTH = time(timeframe.period, "0930-1600:23456", "America/New_York") != 0 or timeframe.isdwm
-        var bool useRegular = (timeframe.in_seconds(showRegularMedian) / 60) >= (timeframe.in_seconds() / 60)
-        
-        if volumeMedianSessionData == "Extended" and not isRTH and useRegular
-            if extendedMarketVolume.size() == volumeMetricLength
-                extendedMarketVolume.shift()
-            array.push(extendedMarketVolume, volume)
-        else if isRTH
-            if regularMarketVolume.size() == volumeMetricLength
-                regularMarketVolume.shift()
-            array.push(regularMarketVolume, volume)
+// Compute median baseline from arrays (only when warmed up)
+regReady = array.size(regVol) >= volumeMetricLength
+extReady = array.size(extVol) >= volumeMetricLength
+medianReg = regReady ? array.median(regVol) : na
+medianExt = extReady ? array.median(extVol) : na
 
-        if volumeMedianSessionData == "Regular"
-            medianVolume := array.median(regularMarketVolume)
-        else if volumeMedianSessionData == "Extended"
-            if isRTH or not useRegular
-                medianVolume := array.median(regularMarketVolume)
-            else
-                medianVolume := array.median(extendedMarketVolume)
-else
-    buyVolume := na
-    sellVolume := na
-    showMetric := false
+// Choose which baseline to use
+baselineMedian =
+     usingSMA ? na :
+     // If user chose Regular, always use Regular (when ready)
+     (baselineSource == "Regular" or forceReg or isRTH) ? medianReg :
+     // Extended: use Extended outside RTH, otherwise Regular
+     (not isRTH ? medianExt : medianReg)
 
-// Calculate the volume metric based on user selection
-volumeMetricValue = usingSMA ? volumeSMA : medianVolume
+// SMA baseline (simple, always on raw volume)
+baselineSMA = ta.sma(volume, volumeMetricLength)
 
-// Plot volume metric
-plot(showMetric and not usingLine and volumeMetricMultiplier2 > 0 ? volumeMetricValue * volumeMetricMultiplier2: na, style=plot.style_columns, color=metricColor3, title="Volume Metric as Bars")
-plot(showMetric and not usingLine and volumeMetricMultiplier > 0 ? volumeMetricValue * volumeMetricMultiplier: na, style=plot.style_columns, color=metricColor2, title="Volume Metric as Bars")
-plot(showMetric and not usingLine ? volumeMetricValue : na, style=plot.style_columns, color=metricColor, title="Volume Metric as Bars")
+// Final baseline (prefer chosen method; if not ready, fall back to SMA when available)
+baseline =
+     usingSMA ? baselineSMA :
+     na(baselineMedian) ? baselineSMA : baselineMedian
 
-// Plot buy and sell volumes
-plot(sellVolume, style=plot.style_columns, color=bearColor, title="Sell Volume")
-plot(buyVolume, style=plot.style_columns, color=bullColor, title="Buy Volume")
+//=============================//
+//           PLOTS             //
+//=============================//
 
-// Plot volume metric line
-plot(showMetric and usingLine ? volumeMetricValue : na, style=plot.style_line, color=averageLineColor, title="Volume Metric as Line")
-plot(showMetric and usingLine and volumeMetricMultiplier > 0 ? volumeMetricValue * volumeMetricMultiplier: na, style=plot.style_line, color=averageLineColor2, title="Volume Metric as Line")
-plot(showMetric and usingLine and volumeMetricMultiplier2 > 0 ? volumeMetricValue * volumeMetricMultiplier2: na, style=plot.style_line, color=averageLineColor3, title="Volume Metric as Line")
+// Baseline as bars
+plot(showMetric and not usingLine and showLevel3 and mult3 > 0 ? baseline * mult3 : na, title="Baseline×M3 (Bars)", style=plot.style_columns, color=barLvl3Color)
+plot(showMetric and not usingLine and showLevel2 and mult2 > 0 ? baseline * mult2 : na, title="Baseline×M2 (Bars)", style=plot.style_columns, color=barLvl2Color)
+plot(showMetric and not usingLine and showLevel1 and mult1 > 0 ? baseline * mult1 : na, title="Baseline×M1 (Bars)", style=plot.style_columns, color=barBaseColor)
+
+// Core volume
+plot(buyDominant ? volume : na, title="Sell Volume", style=plot.style_columns, color=bearColor)
+plot(buyDominant ? buyVolume : na,  title="Buy Volume",  style=plot.style_columns, color=bullColor)
+
+plot(not buyDominant ? volume : na,  title="Buy Volume",  style=plot.style_columns, color=bullColor)
+plot(not buyDominant ? sellVolume : na, title="Sell Volume", style=plot.style_columns, color=bearColor)
+
+// Baseline as line
+plot(showMetric and usingLine and showLevel1 and mult1 > 0 ? baseline * mult1 : na, title="Baseline×M1 (Line)", style=plot.style_line, color=lineBaseColor)
+plot(showMetric and usingLine and showLevel2 and mult2 > 0 ? baseline * mult2 : na, title="Baseline×M2 (Line)", style=plot.style_line, color=lineLvl2Color)
+plot(showMetric and usingLine and showLevel3 and mult3 > 0 ? baseline * mult3 : na, title="Baseline×M3 (Line)", style=plot.style_line, color=lineLvl3Color)
