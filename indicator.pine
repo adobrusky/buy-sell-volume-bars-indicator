@@ -1,5 +1,5 @@
 //@version=6
-indicator("Dobrusky Volume Core", shorttitle="Vol Core", format=format.volume, timeframe="", timeframe_gaps=true)
+indicator("Dobrusky Pressure Core", shorttitle="Pressure Core", format=format.volume, timeframe="", timeframe_gaps=true)
 
 //=============================//
 //           INPUTS            //
@@ -12,9 +12,8 @@ metricDisplay        = input.string("Line", "Baseline Display", options=['Line',
 
 // — Baseline Source / Calc —
 groupBase = "Baseline Calculation"
-volumeMetric         = input.string("Baseline", "Baseline Type", options=['SMA','Baseline'], tooltip="SMA uses ta.sma(volume, Length). Baseline uses session-aware rolling median.", group=groupBase)
 volumeMetricLength   = input.int(50,    "Length", minval=10, maxval=1000, tooltip="Lookback length for SMA/Median.", group=groupBase)
-baselineSource       = input.string("Extended", "Baseline Session Data", options=['Regular','Extended'], tooltip="Which session data to use for the baseline.", group=groupBase)
+baselineSource       = input.string("Regular", "Baseline Session Data", options=['Regular','Extended'], tooltip="Which session data to use for the baseline.", group=groupBase)
 
 // — Session Controls —
 groupSess = "Session Controls"
@@ -24,9 +23,9 @@ forceRegularAboveTf  = input.timeframe("30", "Force Regular Above Timeframe", gr
 
 // — Baseline Levels —
 groupLvl = "Baseline Levels"
-showLevel1           = input.bool(true,  "Show Level × Multiplier 1", group=groupLvl)
-showLevel2           = input.bool(true,  "Show Level × Multiplier 2", group=groupLvl)
-showLevel3           = input.bool(true,  "Show Level × Multiplier 3", group=groupLvl)
+showLevel1           = input.bool(true,  "Show Level x Multiplier 1", group=groupLvl)
+showLevel2           = input.bool(true,  "Show Level x Multiplier 2", group=groupLvl)
+showLevel3           = input.bool(true,  "Show Level x Multiplier 3", group=groupLvl)
 mult1                = input.float(1.0,  "Multiplier 1", minval=0, step=0.1, group=groupLvl)
 mult2                = input.float(1.5,  "Multiplier 2", minval=0, step=0.1, group=groupLvl)
 mult3                = input.float(2.0,  "Multiplier 3", minval=0, step=0.1, group=groupLvl)
@@ -36,11 +35,11 @@ groupCol = "Colors"
 bullColor            = input.color(color.rgb(8,153,129),      "Buy Volume", group=groupCol)
 bearColor            = input.color(color.rgb(242,54,69),      "Sell Volume", group=groupCol)
 barBaseColor         = input.color(color.yellow,              "Baseline Bars (Base)", group=groupCol)
-barLvl2Color         = input.color(color.orange,              "Baseline Bars (×2)", group=groupCol)
-barLvl3Color         = input.color(color.red,                 "Baseline Bars (×3)", group=groupCol)
+barLvl2Color         = input.color(color.orange,              "Baseline Bars (x2)", group=groupCol)
+barLvl3Color         = input.color(color.red,                 "Baseline Bars (x3)", group=groupCol)
 lineBaseColor        = input.color(color.yellow,     "Baseline Line (Base)", group=groupCol)
-lineLvl2Color        = input.color(color.orange,     "Baseline Line (×2)", group=groupCol)
-lineLvl3Color        = input.color(color.red,      "Baseline Line (×3)", group=groupCol)
+lineLvl2Color        = input.color(color.orange,     "Baseline Line (x2)", group=groupCol)
+lineLvl3Color        = input.color(color.red,      "Baseline Line (x3)", group=groupCol)
 
 //=============================//
 //         UTILITIES           //
@@ -88,7 +87,6 @@ buyDominant = buyVolume >= sellVolume
 //       BASELINE SERIES       //
 //=============================//
 
-usingSMA  = (volumeMetric == "SMA")
 usingLine = (metricDisplay == "Line")
 
 // Rolling arrays for Regular vs Extended
@@ -110,9 +108,7 @@ medianReg = regReady ? array.median(regVol) : na
 medianExt = extReady ? array.median(extVol) : na
 
 // Choose which baseline to use
-baselineMedian =
-     usingSMA ? na :
-     // If user chose Regular, always use Regular (when ready)
+baselineMedian = // If user chose Regular, always use Regular (when ready)
      (baselineSource == "Regular" or forceReg or isRTH) ? medianReg :
      // Extended: use Extended outside RTH, otherwise Regular
      (not isRTH ? medianExt : medianReg)
@@ -120,19 +116,14 @@ baselineMedian =
 // SMA baseline (simple, always on raw volume)
 baselineSMA = ta.sma(volume, volumeMetricLength)
 
-// Final baseline (prefer chosen method; if not ready, fall back to SMA when available)
-baseline =
-     usingSMA ? baselineSMA :
-     na(baselineMedian) ? baselineSMA : baselineMedian
-
 //=============================//
 //           PLOTS             //
 //=============================//
 
 // Baseline as bars
-plot(showMetric and not usingLine and showLevel3 and mult3 > 0 ? baseline * mult3 : na, title="Baseline×M3 (Bars)", style=plot.style_columns, color=barLvl3Color)
-plot(showMetric and not usingLine and showLevel2 and mult2 > 0 ? baseline * mult2 : na, title="Baseline×M2 (Bars)", style=plot.style_columns, color=barLvl2Color)
-plot(showMetric and not usingLine and showLevel1 and mult1 > 0 ? baseline * mult1 : na, title="Baseline×M1 (Bars)", style=plot.style_columns, color=barBaseColor)
+plot(showMetric and not usingLine and showLevel3 and mult3 > 0 ? baselineMedian * mult3 : na, title="Baseline×M3 (Bars)", style=plot.style_columns, color=barLvl3Color)
+plot(showMetric and not usingLine and showLevel2 and mult2 > 0 ? baselineMedian * mult2 : na, title="Baseline×M2 (Bars)", style=plot.style_columns, color=barLvl2Color)
+plot(showMetric and not usingLine and showLevel1 and mult1 > 0 ? baselineMedian * mult1 : na, title="Baseline×M1 (Bars)", style=plot.style_columns, color=barBaseColor)
 
 // Core volume
 plot(buyDominant ? volume : na, title="Sell Volume", style=plot.style_columns, color=bearColor)
@@ -142,6 +133,6 @@ plot(not buyDominant ? volume : na,  title="Buy Volume",  style=plot.style_colum
 plot(not buyDominant ? sellVolume : na, title="Sell Volume", style=plot.style_columns, color=bearColor)
 
 // Baseline as line
-plot(showMetric and usingLine and showLevel1 and mult1 > 0 ? baseline * mult1 : na, title="Baseline×M1 (Line)", style=plot.style_line, color=lineBaseColor)
-plot(showMetric and usingLine and showLevel2 and mult2 > 0 ? baseline * mult2 : na, title="Baseline×M2 (Line)", style=plot.style_line, color=lineLvl2Color)
-plot(showMetric and usingLine and showLevel3 and mult3 > 0 ? baseline * mult3 : na, title="Baseline×M3 (Line)", style=plot.style_line, color=lineLvl3Color)
+plot(showMetric and usingLine and showLevel1 and mult1 > 0 ? baselineMedian * mult1 : na, title="Baseline×M1 (Line)", style=plot.style_line, color=lineBaseColor)
+plot(showMetric and usingLine and showLevel2 and mult2 > 0 ? baselineMedian * mult2 : na, title="Baseline×M2 (Line)", style=plot.style_line, color=lineLvl2Color)
+plot(showMetric and usingLine and showLevel3 and mult3 > 0 ? baselineMedian * mult3 : na, title="Baseline×M3 (Line)", style=plot.style_line, color=lineLvl3Color)
